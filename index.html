@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Portefeuille Modèle — investir.blog</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600;700&family=Playfair+Display:wght@700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<style>
+  :root {
+    --bg:       #0d0f14;
+    --bg2:      #13161d;
+    --bg3:      #1a1e27;
+    --bg4:      #1f2330;
+    --border:   rgba(255,255,255,0.10);
+    --accent:   #b8f04a;
+    --accent2:  #6c8eff;
+    --text:     #eef0f6;
+    --text2:    #9ba3b8;
+    --text3:    #636b82;
+    --green:    #4ade80;
+    --red:      #f87171;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Open Sans', sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 10% 0%, rgba(108,142,255,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 90% 100%, rgba(184,240,74,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 48px; height: 64px;
+    background: rgba(13,15,20,0.92);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .logo { font-family: 'Playfair Display', serif; font-size: 18px; font-weight: 700; }
+  .logo em { font-style: normal; color: var(--accent); }
+
+  .header-right { display: flex; align-items: center; gap: 28px; }
+
+  .live-badge { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text3); font-weight: 500; }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 10px var(--green); animation: blink 2.5s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .btn-sub { display:inline-flex; align-items:center; padding:9px 22px; background:var(--accent); color:#0d0f14; font-family:'Open Sans',sans-serif; font-size:13px; font-weight:700; text-decoration:none; border:none; cursor:pointer; border-radius:4px; transition:background 0.2s,transform 0.15s; }
+  .btn-sub:hover { background:#caf55f; transform:translateY(-1px); }
+
+  .hero { position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:56px 48px 40px; }
+
+  .hero-eyebrow { display:inline-flex; align-items:center; gap:10px; font-size:12px; font-weight:600; color:var(--accent); text-transform:uppercase; letter-spacing:0.12em; margin-bottom:20px; }
+  .hero-eyebrow::before { content:''; display:block; width:24px; height:2px; background:var(--accent); }
+
+  .hero h1 { font-family:'Playfair Display',serif; font-size:clamp(32px,4vw,54px); font-weight:800; line-height:1.1; color:var(--text); margin-bottom:18px; letter-spacing:-0.02em; }
+  .hero h1 em { font-style:italic; color:var(--accent); }
+  .hero-desc { font-size:15px; color:var(--text2); max-width:580px; line-height:1.75; }
+
+  .metrics-wrap { position:relative; z-index:1; max-width:1280px; margin:0 auto 32px; padding:0 48px; }
+  .metrics-grid { display:grid; grid-template-columns:repeat(5,1fr); border:1px solid var(--border); border-radius:8px; overflow:hidden; background:var(--bg2); }
+
+  .metric-card { padding:28px 24px; border-right:1px solid var(--border); position:relative; transition:background 0.2s; }
+  .metric-card:last-child { border-right:none; }
+  .metric-card:hover { background:var(--bg3); }
+  .metric-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:transparent; transition:background 0.2s; }
+  .metric-card:hover::after { background:var(--accent); }
+
+  .metric-label { font-size:12px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px; }
+  .metric-value { font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:500; line-height:1; color:var(--text); margin-bottom:8px; }
+  .metric-value.pos { color:var(--green); }
+  .metric-value.neg { color:var(--red); }
+  .metric-sub { font-size:12px; color:var(--text3); font-weight:500; }
+
+  .content { position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:0 48px 80px; display:grid; grid-template-columns:1fr 360px; gap:28px; }
+
+  .sec-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.12em; color:var(--text3); margin-bottom:14px; display:flex; align-items:center; gap:14px; }
+  .sec-title::after { content:''; flex:1; height:1px; background:var(--border); }
+
+  .chart-box { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:28px; margin-bottom:28px; }
+  .chart-topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+  .chart-title { font-size:14px; font-weight:700; color:var(--text); }
+  .legend { display:flex; gap:20px; }
+  .leg-item { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--text2); font-weight:500; }
+  .leg-dot { width:8px; height:8px; border-radius:50%; }
+  canvas#perfChart { max-height:260px; }
+
+  .pos-table { background:var(--bg2); border:1px solid var(--border); border-radius:8px; overflow:hidden; }
+  .pos-head { display:grid; grid-template-columns:2.5fr 1fr 1fr 1fr 90px; padding:13px 20px; border-bottom:1px solid var(--border); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; color:var(--text3); background:var(--bg3); }
+  .pos-row { display:grid; grid-template-columns:2.5fr 1fr 1fr 1fr 90px; padding:16px 20px; border-bottom:1px solid var(--border); align-items:center; transition:background 0.15s; opacity:0; animation:rise 0.4s forwards; }
+  .pos-row:last-child { border-bottom:none; }
+  .pos-row:hover { background:var(--bg3); }
+  @keyframes rise { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+
+  .pos-name-main { font-size:14px; font-weight:600; color:var(--text); }
+  .pos-ticker-line { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text3); margin-top:2px; }
+  .badge { display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; padding:2px 8px; border-radius:3px; margin-top:5px; }
+  .badge-screener { background:rgba(108,142,255,0.15); color:var(--accent2); }
+  .badge-macroetf  { background:rgba(184,240,74,0.12); color:var(--accent); }
+  .pos-num { font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--text); }
+  .pnl { font-family:'JetBrains Mono',monospace; font-size:14px; font-weight:500; }
+  .pnl.up { color:var(--green); }
+  .pnl.dn { color:var(--red); }
+  .wbar-wrap { display:flex; align-items:center; gap:8px; }
+  .wbar { flex:1; height:4px; background:var(--bg4); border-radius:2px; overflow:hidden; }
+  .wfill { height:100%; background:var(--accent); border-radius:2px; transition:width 1s cubic-bezier(.4,0,.2,1); }
+  .wpct { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text3); min-width:36px; }
+
+  .sidebar { display:flex; flex-direction:column; gap:24px; }
+  .s-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:24px; }
+
+  .cta-card { border-radius:8px; padding:28px; background:linear-gradient(145deg,rgba(184,240,74,0.07),rgba(108,142,255,0.07)); border:1px solid rgba(184,240,74,0.18); }
+  .cta-card h3 { font-family:'Playfair Display',serif; font-size:18px; font-weight:700; color:var(--text); margin-bottom:10px; }
+  .cta-card p { font-size:13px; color:var(--text2); line-height:1.7; margin-bottom:18px; }
+  .cta-list { list-style:none; margin-bottom:22px; }
+  .cta-list li { font-size:13px; color:var(--text2); padding:5px 0; display:flex; align-items:flex-start; gap:10px; line-height:1.5; }
+  .cta-list li::before { content:'→'; color:var(--accent); font-weight:700; flex-shrink:0; margin-top:1px; }
+  .cta-btn { display:block; width:100%; padding:14px; text-align:center; background:var(--accent); color:#0d0f14; font-family:'Open Sans',sans-serif; font-size:13px; font-weight:700; text-decoration:none; border-radius:5px; border:none; cursor:pointer; transition:background 0.2s,transform 0.15s; }
+  .cta-btn:hover { background:#caf55f; transform:translateY(-2px); }
+
+  canvas#donutChart { max-height:170px; }
+  .donut-wrap { display:flex; flex-direction:column; align-items:center; gap:18px; }
+  .d-leg { width:100%; }
+  .d-item { display:flex; align-items:center; justify-content:space-between; padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .d-item:last-child { border-bottom:none; }
+  .d-left { display:flex; align-items:center; gap:10px; }
+  .d-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .d-name { color:var(--text); font-weight:500; }
+  .d-pct { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text3); }
+
+  .tx { padding:14px 0; border-bottom:1px solid var(--border); opacity:0; animation:rise 0.4s forwards; }
+  .tx:last-child { border-bottom:none; padding-bottom:0; }
+  .tx-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+  .tx-ticker { font-family:'JetBrains Mono',monospace; font-size:15px; font-weight:500; color:var(--text); }
+  .tx-badge { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; padding:3px 10px; border-radius:3px; }
+  .tx-badge.buy  { background:rgba(74,222,128,0.12); color:var(--green); }
+  .tx-badge.sell { background:rgba(248,113,113,0.12); color:var(--red); }
+  .tx-meta { font-size:12px; color:var(--text3); }
+
+  .skel { background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%); background-size:200% 100%; animation:shimmer 1.6s infinite; border-radius:4px; }
+  @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+  .skel-row { height:56px; margin:1px 0; }
+  .error { padding:24px; text-align:center; font-size:13px; color:var(--red); }
+
+  footer { position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:24px 48px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--text3); }
+  footer a { color:var(--accent); text-decoration:none; font-weight:600; }
+  footer a:hover { text-decoration:underline; }
+
+  @media (max-width:1100px) { .content { grid-template-columns:1fr; } .metrics-grid { grid-template-columns:repeat(3,1fr); } }
+  @media (max-width:720px)  { header { padding:0 20px; } .hero,.metrics-wrap,.content { padding-left:20px; padding-right:20px; } .metrics-grid { grid-template-columns:1fr 1fr; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">investir<em>.</em>blog — Portefeuille Modèle</div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div>Mis à jour quotidiennement</div>
+    <a href="https://investir.blog" class="btn-sub">S'abonner</a>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="hero-eyebrow">Portefeuille hypothétique · Capital fictif 100 000 USD</div>
+  <h1>La méthode,<br><em>en temps réel.</em></h1>
+  <p class="hero-desc">Un portefeuille géré selon les signaux du screener quantitatif et de macroETF.com — 5 actions sélectionnées + 4 ETF sectoriels. Chaque décision est documentée et traçable.</p>
+</div>
+
+<div class="metrics-wrap">
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-label">Valeur totale</div>
+      <div class="metric-value" id="m-value"><span class="skel" style="width:110px;height:26px;display:block"></span></div>
+      <div class="metric-sub" id="m-pnl">—</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Performance</div>
+      <div class="metric-value" id="m-perf"><span class="skel" style="width:80px;height:26px;display:block"></span></div>
+      <div class="metric-sub" id="m-vs-spy">vs S&P 500 : —</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">vs Stoxx 600</div>
+      <div class="metric-value" id="m-stoxx"><span class="skel" style="width:80px;height:26px;display:block"></span></div>
+      <div class="metric-sub">Benchmark Europe</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Drawdown max</div>
+      <div class="metric-value" id="m-dd"><span class="skel" style="width:80px;height:26px;display:block"></span></div>
+      <div class="metric-sub" id="m-vol">Volatilité : —</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Ratio de Sharpe</div>
+      <div class="metric-value" id="m-sharpe"><span class="skel" style="width:60px;height:26px;display:block"></span></div>
+      <div class="metric-sub">Rendement / risque</div>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div>
+    <div class="chart-box">
+      <div class="chart-topbar">
+        <div class="chart-title">Performance vs Benchmarks</div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-dot" style="background:#b8f04a"></div>Portefeuille</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#6c8eff"></div>S&P 500</div>
+          <div class="leg-item"><div class="leg-dot" style="background:#444c66"></div>Stoxx 600</div>
+        </div>
+      </div>
+      <canvas id="perfChart"></canvas>
+    </div>
+
+    <div class="sec-title">Positions actives</div>
+    <div class="pos-table">
+      <div class="pos-head">
+        <div>Titre</div><div>Prix actuel</div><div>P&L</div><div>Poids</div><div>Type</div>
+      </div>
+      <div id="pos-body">
+        <div class="skel skel-row"></div>
+        <div class="skel skel-row"></div>
+        <div class="skel skel-row"></div>
+        <div class="skel skel-row"></div>
+        <div class="skel skel-row"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="cta-card">
+      <h3>Voir le raisonnement complet</h3>
+      <p>Les abonnés accèdent au détail analytique de chaque position.</p>
+      <ul class="cta-list">
+        <li>Score quantitatif (Quality, Value, Momentum…)</li>
+        <li>Signal macroETF associé à chaque ETF</li>
+        <li>Alertes email à chaque mouvement</li>
+        <li>Historique complet des décisions</li>
+      </ul>
+      <a href="https://investir.blog" class="cta-btn">Accéder — S'abonner</a>
+    </div>
+
+    <div class="s-card">
+      <div class="sec-title">Allocation</div>
+      <div class="donut-wrap">
+        <canvas id="donutChart"></canvas>
+        <div class="d-leg" id="donut-leg"></div>
+      </div>
+    </div>
+
+    <div class="s-card">
+      <div class="sec-title">Derniers mouvements</div>
+      <div id="tx-body">
+        <div class="skel" style="height:62px;margin-bottom:8px;border-radius:4px"></div>
+        <div class="skel" style="height:62px;margin-bottom:8px;border-radius:4px"></div>
+        <div class="skel" style="height:62px;border-radius:4px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <span>© 2026 investir.blog — Portefeuille hypothétique. Aucun conseil en investissement.</span>
+  <span><a href="https://investir.blog">Newsletter</a> · <a href="https://macroetf.com">MacroETF</a></span>
+</footer>
+
+<script>
+const API = 'https://web-production-0bdc4.up.railway.app';
+const f2   = n => n != null ? n.toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) : '—';
+const fpct = n => n != null ? (n>=0?'+':'')+f2(n)+' %' : '—';
+const fusd = n => n != null ? '$\u202f'+f2(n) : '—';
+
+let perfChart=null, donut=null;
+const COLORS=['#b8f04a','#6c8eff','#4ade80','#f87171','#60a5fa','#fb923c','#a78bfa','#facc15'];
+
+function drawPerfChart(labels,port,spy,stoxx){
+  const ctx=document.getElementById('perfChart').getContext('2d');
+  if(perfChart)perfChart.destroy();
+  perfChart=new Chart(ctx,{type:'line',data:{labels,datasets:[
+    {label:'Portefeuille',data:port,borderColor:'#b8f04a',backgroundColor:'rgba(184,240,74,0.06)',borderWidth:2.5,pointRadius:0,tension:0.35,fill:true},
+    {label:'S&P 500',data:spy,borderColor:'#6c8eff',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[5,4]},
+    {label:'Stoxx 600',data:stoxx,borderColor:'#444c66',backgroundColor:'transparent',borderWidth:1.5,pointRadius:0,tension:0.35,borderDash:[5,4]},
+  ]},options:{responsive:true,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1e27',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,titleFont:{family:'Open Sans',size:12,weight:'600'},bodyFont:{family:'JetBrains Mono',size:11},padding:12,callbacks:{label:c=>`  ${c.dataset.label} : ${fpct(c.parsed.y)}`}}},scales:{x:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#636b82',font:{family:'Open Sans',size:11},maxTicksLimit:8}},y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#636b82',font:{family:'JetBrains Mono',size:11},callback:v=>fpct(v)}}}}});
+}
+
+function drawPerfEmpty(){
+  const today=new Date();
+  const labels=Array.from({length:30},(_,i)=>{const d=new Date(today);d.setDate(d.getDate()-(29-i));return d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'});});
+  drawPerfChart(labels,Array(30).fill(0),Array(30).fill(0),Array(30).fill(0));
+}
+
+function drawDonut(positions){
+  const ctx=document.getElementById('donutChart').getContext('2d');
+  if(donut)donut.destroy();
+  const labels=positions.map(p=>p.ticker);
+  const data=positions.map(p=>p.weight_actual||0);
+  const colors=positions.map((_,i)=>COLORS[i%COLORS.length]);
+  donut=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:6}]},options:{responsive:true,cutout:'74%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1e27',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,bodyFont:{family:'JetBrains Mono',size:11},callbacks:{label:c=>`  ${c.label} : ${f2(c.parsed)} %`}}}}});
+  document.getElementById('donut-leg').innerHTML=positions.map((p,i)=>`<div class="d-item"><div class="d-left"><div class="d-dot" style="background:${colors[i]}"></div><span class="d-name">${p.ticker}</span></div><span class="d-pct">${f2(p.weight_actual||0)} %</span></div>`).join('');
+}
+
+function renderPos(positions){
+  const body=document.getElementById('pos-body');
+  if(!positions.length){body.innerHTML='<div class="error">Aucune position active pour le moment.</div>';return;}
+  body.innerHTML=positions.map((p,i)=>{
+    const up=p.pnl_pct>=0;
+    const name=p.name.length>28?p.name.slice(0,28)+'…':p.name;
+    const src=p.source==='screener'?'<span class="badge badge-screener">Screener</span>':p.source==='macroetf'?'<span class="badge badge-macroetf">MacroETF</span>':'';
+    return `<div class="pos-row" style="animation-delay:${i*0.06}s"><div><div class="pos-name-main">${name}</div><div class="pos-ticker-line">${p.ticker}</div>${src}</div><div class="pos-num">${fusd(p.current_price)}</div><div class="pnl ${up?'up':'dn'}">${fpct(p.pnl_pct)}</div><div><div class="wbar-wrap"><div class="wbar"><div class="wfill" style="width:${Math.min(p.weight_actual||0,100)}%"></div></div><span class="wpct">${f2(p.weight_actual||0)} %</span></div></div><div style="font-size:12px;color:var(--text3)">${p.asset_type==='etf'?'ETF':'Action'}</div></div>`;
+  }).join('');
+}
+
+function renderTx(txs){
+  const body=document.getElementById('tx-body');
+  if(!txs.length){body.innerHTML='<div class="error">Aucune transaction.</div>';return;}
+  body.innerHTML=txs.slice(0,6).map((tx,i)=>`<div class="tx" style="animation-delay:${i*0.08}s"><div class="tx-top"><span class="tx-ticker">${tx.ticker}</span><span class="tx-badge ${tx.transaction_type}">${tx.transaction_type==='buy'?'Achat':tx.transaction_type==='sell'?'Vente':'Rééquilibrage'}</span></div><div class="tx-meta">${new Date(tx.executed_at).toLocaleDateString('fr-FR',{day:'2-digit',month:'long',year:'numeric'})} · ${tx.shares} parts · ${fusd(tx.price)}/part</div></div>`).join('');
+}
+
+function renderMetrics(p){
+  const set=(id,val,cls)=>{const el=document.getElementById(id);el.textContent=val;if(cls)el.className='metric-value '+cls;};
+  const cls=v=>v==null?'':v>=0?'pos':'neg';
+  set('m-value',fusd(p.total_value));
+  document.getElementById('m-pnl').textContent=`P&L : ${fusd(p.total_pnl)} (${fpct(p.total_pnl_pct)})`;
+  set('m-perf',fpct(p.portfolio_pct),cls(p.portfolio_pct));
+  document.getElementById('m-vs-spy').textContent=`vs S&P 500 : ${fpct(p.benchmark_spy_pct)}`;
+  set('m-stoxx',fpct(p.benchmark_stoxx_pct),cls(p.benchmark_stoxx_pct));
+  set('m-dd',p.max_drawdown!=null?`-${f2(p.max_drawdown)} %`:'—',p.max_drawdown>0?'neg':'');
+  document.getElementById('m-vol').textContent=`Volatilité : ${p.volatility_annual!=null?f2(p.volatility_annual)+' %':'—'}`;
+  set('m-sharpe',p.sharpe_ratio!=null?f2(p.sharpe_ratio):'—',cls(p.sharpe_ratio));
+}
+
+async function init(){
+  drawPerfEmpty();
+  try{
+    const [posR,perfR,txR]=await Promise.all([fetch(`${API}/public/positions`),fetch(`${API}/public/performance`),fetch(`${API}/public/transactions?limit=6`)]);
+    const [positions,perf,txs]=await Promise.all([posR.json(),perfR.json(),txR.json()]);
+    renderMetrics(perf);
+    renderPos(positions);
+    renderTx(txs);
+    if(positions.length)drawDonut(positions);
+  }catch(e){
+    console.error(e);
+    document.getElementById('pos-body').innerHTML='<div class="error">Impossible de charger les données.</div>';
+  }
+}
+
+init();
+</script>
+</body>
+</html>
