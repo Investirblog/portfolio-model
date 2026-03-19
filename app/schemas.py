@@ -63,6 +63,7 @@ class PositionPublic(BaseModel):
     weight_target: Optional[float]
     source: Optional[str]
     opened_at: date
+    is_public: bool = False
     # Enrichi à la volée par l'API
     current_price: Optional[float] = None
     current_value: Optional[float] = None
