@@ -150,8 +150,9 @@ def calculate_portfolio_performance(db: Session) -> dict:
     if len(snapshots) >= 2:
         values = [float(s.total_value) for s in snapshots]
         max_drawdown = _calculate_max_drawdown(values)
-        volatility_annual = _calculate_volatility(values)
-        sharpe_ratio = _calculate_sharpe(values)
+        if len(values) >= 2:
+            volatility_annual = _calculate_volatility(values)
+            sharpe_ratio = _calculate_sharpe(values)
 
     inception_date = snapshots[0].snapshot_date if snapshots else None
     spy_pct, stoxx_pct = _benchmark_performance(db, inception_date)
@@ -195,6 +196,8 @@ def _calculate_volatility(values, trading_days=252):
     if len(values) < 2:
         return 0.0
     returns = [(values[i] - values[i-1]) / values[i-1] for i in range(1, len(values))]
+    if len(returns) < 2:
+        return 0.0
     return float(statistics.stdev(returns) * math.sqrt(trading_days) * 100)
 
 
