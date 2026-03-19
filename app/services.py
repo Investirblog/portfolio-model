@@ -1,83 +1,112 @@
 # ============================================================
-# services.py — Logique métier : prix, performance, calculs
+# services.py — Logique metier : prix, performance, calculs
+# Utilise Financial Modeling Prep (FMP) a la place de yfinance
 # ============================================================
-import yfinance as yf
-import pandas as pd
-import numpy as np
-from datetime import date, timedelta
+import math
+import statistics
+import httpx
+from datetime import date
 from typing import List, Optional, Dict
 from sqlalchemy.orm import Session
 from app.models import Position, PriceCache, PortfolioSnapshot, BenchmarkSnapshot
+from app.config import get_settings
 import logging
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
-# Tickers des benchmarks
-BENCHMARKS = {
-    "SPY": "S&P 500",
-    "SXXP.MI": "Stoxx 600",   # ETF Stoxx 600 coté Milan
+FMP_BASE = "https://financialmodelingprep.com/api/v3"
+
+FMP_TICKER_MAP = {
+    "ESIH.DE": "ESIH.XETRA",
+    "ESIS.DE": "ESIS.XETRA",
+    "SPYU.DE": "SPYU.XETRA",
+    "D5BK.DE": "D5BK.XETRA",
+    "SXXP.MI": "SXXP.MI",
 }
 
 
-# ============================================================
-# PRIX
-# ============================================================
+def _fmp_ticker(ticker: str) -> str:
+    return FMP_TICKER_MAP.get(ticker, ticker)
 
-def fetch_price_yfinance(ticker: str) -> Optional[float]:
-    """Récupère le dernier prix d'un ticker via yfinance."""
+
+def fetch_price_fmp(ticker: str) -> Optional[float]:
+    fmp_t = _fmp_ticker(ticker)
     try:
-        t = yf.Ticker(ticker)
-        hist = t.history(period="2d")
-        if hist.empty:
-            logger.warning(f"Pas de données pour {ticker}")
-            return None
-        return float(hist["Close"].iloc[-1])
+        url = f"{FMP_BASE}/quote-short/{fmp_t}"
+        params = {"apikey": settings.fmp_api_key}
+        with httpx.Client(timeout=10) as client:
+            resp = client.get(url, params=params)
+            data = resp.json()
+            if isinstance(data, list) and data:
+                price = data[0].get("price")
+                if price:
+                    return float(price)
+            url2 = f"{FMP_BASE}/quote/{fmp_t}"
+            resp2 = client.get(url2, params=params)
+            data2 = resp2.json()
+            if isinstance(data2, list) and data2:
+                price2 = data2[0].get("price")
+                if price2:
+                    return float(price2)
+        logger.warning(f"Prix non trouve pour {ticker} ({fmp_t})")
+        return None
     except Exception as e:
-        logger.error(f"Erreur prix {ticker}: {e}")
+        logger.error(f"Erreur prix FMP {ticker}: {e}")
         return None
 
 
-def refresh_prices(db: Session, tickers: List[str]) -> Dict[str, float]:
-    """
-    Met à jour le cache de prix pour une liste de tickers.
-    Retourne un dict {ticker: price}.
-    """
+def fetch_prices_fmp_batch(tickers: List[str]) -> Dict[str, float]:
     prices = {}
-    for ticker in tickers:
-        price = fetch_price_yfinance(ticker)
-        if price is not None:
+    us_tickers = [t for t in tickers if "." not in t or t.endswith(".TO")]
+    eu_tickers  = [t for t in tickers if "." in t and not t.endswith(".TO")]
+
+    if us_tickers:
+        try:
+            joined = ",".join(us_tickers)
+            url = f"{FMP_BASE}/quote-short/{joined}"
+            with httpx.Client(timeout=15) as client:
+                resp = client.get(url, params={"apikey": settings.fmp_api_key})
+                data = resp.json()
+                if isinstance(data, list):
+                    for item in data:
+                        sym = item.get("symbol", "")
+                        price = item.get("price")
+                        if sym and price:
+                            prices[sym] = float(price)
+        except Exception as e:
+            logger.error(f"Erreur batch US FMP: {e}")
+
+    for ticker in eu_tickers:
+        price = fetch_price_fmp(ticker)
+        if price:
             prices[ticker] = price
-            cache = db.query(PriceCache).filter(PriceCache.ticker == ticker).first()
-            if cache:
-                cache.price = price
-                cache.price_date = date.today()
-            else:
-                db.add(PriceCache(
-                    ticker=ticker,
-                    price=price,
-                    price_date=date.today()
-                ))
+
+    return prices
+
+
+def refresh_prices(db: Session, tickers: List[str]) -> Dict[str, float]:
+    prices = fetch_prices_fmp_batch(tickers)
+    for ticker, price in prices.items():
+        cache = db.query(PriceCache).filter(PriceCache.ticker == ticker).first()
+        if cache:
+            cache.price = price
+            cache.price_date = date.today()
+        else:
+            db.add(PriceCache(ticker=ticker, price=price, price_date=date.today()))
     db.commit()
+    logger.info(f"{len(prices)} prix mis a jour via FMP")
     return prices
 
 
 def get_cached_price(db: Session, ticker: str) -> Optional[float]:
-    """Retourne le prix depuis le cache DB."""
     cache = db.query(PriceCache).filter(PriceCache.ticker == ticker).first()
     if cache and cache.price:
         return float(cache.price)
     return None
 
 
-# ============================================================
-# PERFORMANCE
-# ============================================================
-
 def calculate_portfolio_performance(db: Session) -> dict:
-    """
-    Calcule les métriques de performance du portefeuille.
-    Retourne un dict compatible avec PerformanceSummary.
-    """
     positions = db.query(Position).filter(Position.is_active == True).all()
 
     if not positions:
@@ -102,10 +131,7 @@ def calculate_portfolio_performance(db: Session) -> dict:
     total_pnl = total_value - total_cost
     total_pnl_pct = (total_pnl / total_cost * 100) if total_cost > 0 else 0
 
-    # Snapshots pour drawdown et volatilité
-    snapshots = db.query(PortfolioSnapshot).order_by(
-        PortfolioSnapshot.snapshot_date
-    ).all()
+    snapshots = db.query(PortfolioSnapshot).order_by(PortfolioSnapshot.snapshot_date).all()
 
     max_drawdown = 0.0
     volatility_annual = 0.0
@@ -117,11 +143,7 @@ def calculate_portfolio_performance(db: Session) -> dict:
         volatility_annual = _calculate_volatility(values)
         sharpe_ratio = _calculate_sharpe(values)
 
-    inception_date = None
-    if snapshots:
-        inception_date = snapshots[0].snapshot_date
-
-    # Performance benchmarks depuis inception
+    inception_date = snapshots[0].snapshot_date if snapshots else None
     spy_pct, stoxx_pct = _benchmark_performance(db, inception_date)
 
     portfolio_pct = None
@@ -146,7 +168,6 @@ def calculate_portfolio_performance(db: Session) -> dict:
 
 
 def _calculate_max_drawdown(values: List[float]) -> float:
-    """Calcule le drawdown maximum depuis une série de valeurs."""
     if not values:
         return 0.0
     peak = values[0]
@@ -161,40 +182,24 @@ def _calculate_max_drawdown(values: List[float]) -> float:
 
 
 def _calculate_volatility(values: List[float], trading_days: int = 252) -> float:
-    """Volatilité annualisée des rendements quotidiens."""
     if len(values) < 2:
         return 0.0
-    returns = [
-        (values[i] - values[i-1]) / values[i-1]
-        for i in range(1, len(values))
-    ]
-    return float(np.std(returns) * np.sqrt(trading_days) * 100)
+    returns = [(values[i] - values[i-1]) / values[i-1] for i in range(1, len(values))]
+    return float(statistics.stdev(returns) * math.sqrt(trading_days) * 100)
 
 
-def _calculate_sharpe(
-    values: List[float],
-    risk_free_rate: float = 0.03,
-    trading_days: int = 252
-) -> Optional[float]:
-    """Ratio de Sharpe simplifié (taux sans risque 3%)."""
+def _calculate_sharpe(values: List[float], risk_free_rate: float = 0.03, trading_days: int = 252) -> Optional[float]:
     if len(values) < 2:
         return None
-    returns = [
-        (values[i] - values[i-1]) / values[i-1]
-        for i in range(1, len(values))
-    ]
-    mean_return = np.mean(returns) * trading_days
-    vol = np.std(returns) * np.sqrt(trading_days)
+    returns = [(values[i] - values[i-1]) / values[i-1] for i in range(1, len(values))]
+    mean_return = statistics.mean(returns) * trading_days
+    vol = statistics.stdev(returns) * math.sqrt(trading_days)
     if vol == 0:
         return None
     return float((mean_return - risk_free_rate) / vol)
 
 
-def _benchmark_performance(
-    db: Session,
-    inception_date: Optional[date]
-) -> tuple:
-    """Retourne la performance SPY et Stoxx 600 depuis inception."""
+def _benchmark_performance(db: Session, inception_date) -> tuple:
     if not inception_date:
         return None, None
 
@@ -203,11 +208,9 @@ def _benchmark_performance(
             BenchmarkSnapshot.benchmark == ticker,
             BenchmarkSnapshot.snapshot_date >= inception_date
         ).order_by(BenchmarkSnapshot.snapshot_date).first()
-
         last = db.query(BenchmarkSnapshot).filter(
             BenchmarkSnapshot.benchmark == ticker
         ).order_by(BenchmarkSnapshot.snapshot_date.desc()).first()
-
         if first and last and float(first.price) > 0:
             return (float(last.price) - float(first.price)) / float(first.price) * 100
         return None
@@ -216,18 +219,11 @@ def _benchmark_performance(
 
 
 def save_daily_snapshot(db: Session, total_value: float, cash: float = 0):
-    """Enregistre un snapshot quotidien du portefeuille."""
     today = date.today()
-    existing = db.query(PortfolioSnapshot).filter(
-        PortfolioSnapshot.snapshot_date == today
-    ).first()
+    existing = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.snapshot_date == today).first()
     if existing:
         existing.total_value = total_value
         existing.cash = cash
     else:
-        db.add(PortfolioSnapshot(
-            total_value=total_value,
-            cash=cash,
-            snapshot_date=today
-        ))
+        db.add(PortfolioSnapshot(total_value=total_value, cash=cash, snapshot_date=today))
     db.commit()

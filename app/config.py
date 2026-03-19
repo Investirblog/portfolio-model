@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Cron secret (pour le scheduler externe)
     cron_secret: str = "changeme"
 
+    # Financial Modeling Prep API
+    fmp_api_key: str = ""
+
     # CORS
     allowed_origins: str = "http://localhost:3000,https://investir.blog"
 
