@@ -1,6 +1,5 @@
 # ============================================================
-# services.py — Logique metier : prix, performance, calculs
-# Utilise Financial Modeling Prep (FMP) a la place de yfinance
+# services.py — Prix via Twelve Data, performance, calculs
 # ============================================================
 import math
 import statistics
@@ -15,78 +14,90 @@ import logging
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
-FMP_BASE = "https://financialmodelingprep.com/api/v3"
+TD_BASE = "https://api.twelvedata.com"
 
-FMP_TICKER_MAP = {
-    "ESIH.DE": "ESIH.XETRA",
-    "ESIS.DE": "ESIS.XETRA",
-    "SPYU.DE": "SPYU.XETRA",
-    "D5BK.DE": "D5BK.XETRA",
-    "SXXP.MI": "SXXP.MI",
+# Correspondance tickers locaux -> tickers Twelve Data
+TD_TICKER_MAP = {
+    "ESIH.DE": "ESIH",
+    "ESIS.DE": "ESIS",
+    "SPYU.DE": "SPYU",
+    "D5BK.DE": "D5BK",
+}
+
+TD_EXCHANGE_MAP = {
+    "ESIH.DE": "XETRA",
+    "ESIS.DE": "XETRA",
+    "SPYU.DE": "XETRA",
+    "D5BK.DE": "XETRA",
+    "SXXP.MI": "MIL",
+    "B":       "NYSE",
 }
 
 
-def _fmp_ticker(ticker: str) -> str:
-    return FMP_TICKER_MAP.get(ticker, ticker)
-
-
-def fetch_price_fmp(ticker: str) -> Optional[float]:
-    fmp_t = _fmp_ticker(ticker)
-    try:
-        url = f"{FMP_BASE}/quote-short/{fmp_t}"
-        params = {"apikey": settings.fmp_api_key}
-        with httpx.Client(timeout=10) as client:
-            resp = client.get(url, params=params)
-            data = resp.json()
-            if isinstance(data, list) and data:
-                price = data[0].get("price")
-                if price:
-                    return float(price)
-            url2 = f"{FMP_BASE}/quote/{fmp_t}"
-            resp2 = client.get(url2, params=params)
-            data2 = resp2.json()
-            if isinstance(data2, list) and data2:
-                price2 = data2[0].get("price")
-                if price2:
-                    return float(price2)
-        logger.warning(f"Prix non trouve pour {ticker} ({fmp_t})")
-        return None
-    except Exception as e:
-        logger.error(f"Erreur prix FMP {ticker}: {e}")
-        return None
-
-
-def fetch_prices_fmp_batch(tickers: List[str]) -> Dict[str, float]:
+def fetch_prices_batch(tickers: List[str]) -> Dict[str, float]:
+    """
+    Recupere les prix en batch via Twelve Data.
+    Max ~8 tickers par requete sur le plan gratuit.
+    """
     prices = {}
-    us_tickers = [t for t in tickers if "." not in t or t.endswith(".TO")]
-    eu_tickers  = [t for t in tickers if "." in t and not t.endswith(".TO")]
 
+    def _td_symbol(ticker):
+        return TD_TICKER_MAP.get(ticker, ticker)
+
+    def _td_exchange(ticker):
+        return TD_EXCHANGE_MAP.get(ticker)
+
+    # Separer US/Canada et Europe
+    us_tickers = [t for t in tickers if t not in TD_TICKER_MAP and t != "SXXP.MI"]
+    eu_tickers  = [t for t in tickers if t in TD_TICKER_MAP or t == "SXXP.MI"]
+
+    # Batch US (symboles simples)
     if us_tickers:
         try:
-            joined = ",".join(us_tickers)
-            url = f"{FMP_BASE}/quote-short/{joined}"
+            symbols = ",".join(us_tickers)
+            url = f"{TD_BASE}/price"
+            params = {"symbol": symbols, "apikey": settings.fmp_api_key}
             with httpx.Client(timeout=15) as client:
-                resp = client.get(url, params={"apikey": settings.fmp_api_key})
+                resp = client.get(url, params=params)
                 data = resp.json()
-                if isinstance(data, list):
-                    for item in data:
-                        sym = item.get("symbol", "")
-                        price = item.get("price")
-                        if sym and price:
-                            prices[sym] = float(price)
+                # Reponse batch : dict {TICKER: {price: ...}} ou direct si 1 ticker
+                if isinstance(data, dict):
+                    if "price" in data:
+                        # 1 seul ticker retourne direct
+                        if len(us_tickers) == 1:
+                            prices[us_tickers[0]] = float(data["price"])
+                    else:
+                        for ticker in us_tickers:
+                            item = data.get(ticker, {})
+                            if isinstance(item, dict) and "price" in item:
+                                prices[ticker] = float(item["price"])
         except Exception as e:
-            logger.error(f"Erreur batch US FMP: {e}")
+            logger.error(f"Erreur batch Twelve Data US: {e}")
 
+    # ETF europeens — requetes individuelles avec exchange
     for ticker in eu_tickers:
-        price = fetch_price_fmp(ticker)
-        if price:
-            prices[ticker] = price
+        try:
+            symbol = _td_symbol(ticker)
+            exchange = _td_exchange(ticker)
+            params = {"symbol": symbol, "apikey": settings.fmp_api_key}
+            if exchange:
+                params["exchange"] = exchange
+            url = f"{TD_BASE}/price"
+            with httpx.Client(timeout=10) as client:
+                resp = client.get(url, params=params)
+                data = resp.json()
+                if isinstance(data, dict) and "price" in data:
+                    prices[ticker] = float(data["price"])
+                else:
+                    logger.warning(f"Prix non trouve pour {ticker}: {data}")
+        except Exception as e:
+            logger.error(f"Erreur Twelve Data {ticker}: {e}")
 
     return prices
 
 
 def refresh_prices(db: Session, tickers: List[str]) -> Dict[str, float]:
-    prices = fetch_prices_fmp_batch(tickers)
+    prices = fetch_prices_batch(tickers)
     for ticker, price in prices.items():
         cache = db.query(PriceCache).filter(PriceCache.ticker == ticker).first()
         if cache:
@@ -95,7 +106,7 @@ def refresh_prices(db: Session, tickers: List[str]) -> Dict[str, float]:
         else:
             db.add(PriceCache(ticker=ticker, price=price, price_date=date.today()))
     db.commit()
-    logger.info(f"{len(prices)} prix mis a jour via FMP")
+    logger.info(f"{len(prices)} prix mis a jour via Twelve Data")
     return prices
 
 
@@ -132,7 +143,6 @@ def calculate_portfolio_performance(db: Session) -> dict:
     total_pnl_pct = (total_pnl / total_cost * 100) if total_cost > 0 else 0
 
     snapshots = db.query(PortfolioSnapshot).order_by(PortfolioSnapshot.snapshot_date).all()
-
     max_drawdown = 0.0
     volatility_annual = 0.0
     sharpe_ratio = None
@@ -167,7 +177,7 @@ def calculate_portfolio_performance(db: Session) -> dict:
     }
 
 
-def _calculate_max_drawdown(values: List[float]) -> float:
+def _calculate_max_drawdown(values):
     if not values:
         return 0.0
     peak = values[0]
@@ -181,14 +191,14 @@ def _calculate_max_drawdown(values: List[float]) -> float:
     return max_dd
 
 
-def _calculate_volatility(values: List[float], trading_days: int = 252) -> float:
+def _calculate_volatility(values, trading_days=252):
     if len(values) < 2:
         return 0.0
     returns = [(values[i] - values[i-1]) / values[i-1] for i in range(1, len(values))]
     return float(statistics.stdev(returns) * math.sqrt(trading_days) * 100)
 
 
-def _calculate_sharpe(values: List[float], risk_free_rate: float = 0.03, trading_days: int = 252) -> Optional[float]:
+def _calculate_sharpe(values, risk_free_rate=0.03, trading_days=252):
     if len(values) < 2:
         return None
     returns = [(values[i] - values[i-1]) / values[i-1] for i in range(1, len(values))]
@@ -199,7 +209,7 @@ def _calculate_sharpe(values: List[float], risk_free_rate: float = 0.03, trading
     return float((mean_return - risk_free_rate) / vol)
 
 
-def _benchmark_performance(db: Session, inception_date) -> tuple:
+def _benchmark_performance(db, inception_date):
     if not inception_date:
         return None, None
 
@@ -218,9 +228,11 @@ def _benchmark_performance(db: Session, inception_date) -> tuple:
     return _perf("SPY"), _perf("SXXP.MI")
 
 
-def save_daily_snapshot(db: Session, total_value: float, cash: float = 0):
+def save_daily_snapshot(db, total_value, cash=0):
     today = date.today()
-    existing = db.query(PortfolioSnapshot).filter(PortfolioSnapshot.snapshot_date == today).first()
+    existing = db.query(PortfolioSnapshot).filter(
+        PortfolioSnapshot.snapshot_date == today
+    ).first()
     if existing:
         existing.total_value = total_value
         existing.cash = cash
