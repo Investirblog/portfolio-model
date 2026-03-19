@@ -18,8 +18,8 @@
     --accent:   #b8f04a;
     --accent2:  #6c8eff;
     --text:     #eef0f6;
-    --text2:    #9ba3b8;
-    --text3:    #636b82;
+    --text2:    #c8d0e0;
+    --text3:    #a0a8be;
     --green:    #4ade80;
     --red:      #f87171;
   }
@@ -48,7 +48,7 @@
   }
 
   header {
-    position: sticky; top: 0; z-index: 100;
+    position: sticky; top: 0; z-index: 200;
     display: flex; align-items: center; justify-content: space-between;
     padding: 0 48px; height: 64px;
     background: rgba(13,15,20,0.92);
@@ -86,11 +86,11 @@
   .metric-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:2px; background:transparent; transition:background 0.2s; }
   .metric-card:hover::after { background:var(--accent); }
 
-  .metric-label { font-size:12px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px; }
-  .metric-value { font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:500; line-height:1; color:var(--text); margin-bottom:8px; }
+  .metric-label { font-size:13px; font-weight:600; color:var(--text3); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px; }
+  .metric-value { font-family:'JetBrains Mono',monospace; font-size:28px; font-weight:500; line-height:1; color:var(--text); margin-bottom:8px; }
   .metric-value.pos { color:var(--green); }
   .metric-value.neg { color:var(--red); }
-  .metric-sub { font-size:12px; color:var(--text3); font-weight:500; }
+  .metric-sub { font-size:13px; color:var(--text3); font-weight:500; }
 
   .content { position:relative; z-index:1; max-width:1280px; margin:0 auto; padding:0 48px 80px; display:grid; grid-template-columns:1fr 360px; gap:28px; }
 
@@ -115,6 +115,8 @@
   .pos-name-main { font-size:14px; font-weight:600; color:var(--text); }
   .pos-ticker-line { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text3); margin-top:2px; }
   .badge { display:inline-block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; padding:2px 8px; border-radius:3px; margin-top:5px; }
+  .locked { color:var(--text2); font-style:italic; }
+  .locked-sub { color:var(--text3); font-size:11px; margin-top:2px; }
   .badge-screener { background:rgba(108,142,255,0.15); color:var(--accent2); }
   .badge-macroetf  { background:rgba(184,240,74,0.12); color:var(--accent); }
   .pos-num { font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--text); }
@@ -124,7 +126,7 @@
   .wbar-wrap { display:flex; align-items:center; gap:8px; }
   .wbar { flex:1; height:4px; background:var(--bg4); border-radius:2px; overflow:hidden; }
   .wfill { height:100%; background:var(--accent); border-radius:2px; transition:width 1s cubic-bezier(.4,0,.2,1); }
-  .wpct { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text3); min-width:36px; }
+  .wpct { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text2); min-width:36px; }
 
   .sidebar { display:flex; flex-direction:column; gap:24px; }
   .s-card { background:var(--bg2); border:1px solid var(--border); border-radius:8px; padding:24px; }
@@ -146,7 +148,7 @@
   .d-left { display:flex; align-items:center; gap:10px; }
   .d-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .d-name { color:var(--text); font-weight:500; }
-  .d-pct { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text3); }
+  .d-pct { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text2); }
 
   .tx { padding:14px 0; border-bottom:1px solid var(--border); opacity:0; animation:rise 0.4s forwards; }
   .tx:last-child { border-bottom:none; padding-bottom:0; }
@@ -155,7 +157,7 @@
   .tx-badge { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.08em; padding:3px 10px; border-radius:3px; }
   .tx-badge.buy  { background:rgba(74,222,128,0.12); color:var(--green); }
   .tx-badge.sell { background:rgba(248,113,113,0.12); color:var(--red); }
-  .tx-meta { font-size:12px; color:var(--text3); }
+  .tx-meta { font-size:12px; color:var(--text2); }
 
   .skel { background:linear-gradient(90deg,var(--bg3) 25%,var(--bg4) 50%,var(--bg3) 75%); background-size:200% 100%; animation:shimmer 1.6s infinite; border-radius:4px; }
   @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
@@ -167,7 +169,25 @@
   footer a:hover { text-decoration:underline; }
 
   @media (max-width:1100px) { .content { grid-template-columns:1fr; } .metrics-grid { grid-template-columns:repeat(3,1fr); } }
-  @media (max-width:720px)  { header { padding:0 20px; } .hero,.metrics-wrap,.content { padding-left:20px; padding-right:20px; } .metrics-grid { grid-template-columns:1fr 1fr; } }
+  @media (max-width:480px) { .metrics-grid { grid-template-columns:1fr 1fr; } .metric-value { font-size:20px; } .metric-label { font-size:11px; } .metric-card { padding:18px 14px; } }
+  @media (max-width:720px) {
+    header { padding:0 16px; height:56px; }
+    .logo { font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px; }
+    .live-badge { display:none; }
+    .hero { padding-top:32px; }
+    .hero,.metrics-wrap,.content { padding-left:16px; padding-right:16px; }
+    .metrics-grid { grid-template-columns:1fr 1fr; }
+    .pos-head { grid-template-columns:2fr 1fr 1fr !important; }
+    .pos-row { grid-template-columns:2fr 1fr 1fr !important; }
+    .pos-head > div:nth-child(4), .pos-head > div:nth-child(5), .pos-row > div:nth-child(4), .pos-row > div:nth-child(5) { display:none; }
+    .hero h1 { font-size:26px; }
+    .tx-meta { font-size:13px; color:#c8d0e0; }
+    .d-pct { color:#c8d0e0; }
+    .wpct { color:#c8d0e0; }
+    .pos-ticker-line { color:#b0b8cc; }
+    .metric-sub { color:#b8c0d4 !important; }
+    .metric-label { color:#b8c0d4 !important; }
+  }
 </style>
 </head>
 <body>
@@ -176,7 +196,7 @@
   <div class="logo">investir<em>.</em>blog — Portefeuille Modèle</div>
   <div class="header-right">
     <div class="live-badge"><div class="live-dot"></div>Mis à jour quotidiennement</div>
-    <a href="https://investir.blog" class="btn-sub">S'abonner</a>
+    <a href="https://www.investir.blog/s/premium" class="btn-sub">S'abonner</a>
   </div>
 </header>
 
@@ -255,7 +275,7 @@
         <li>Alertes email à chaque mouvement</li>
         <li>Historique complet des décisions</li>
       </ul>
-      <a href="https://investir.blog" class="cta-btn">Accéder — S'abonner</a>
+      <a href="https://www.investir.blog/s/premium" class="cta-btn">Accéder — S'abonner</a>
     </div>
 
     <div class="s-card">
@@ -279,7 +299,7 @@
 
 <footer>
   <span>© 2026 investir.blog — Portefeuille hypothétique. Aucun conseil en investissement.</span>
-  <span><a href="https://investir.blog">Newsletter</a> · <a href="https://macroetf.com">MacroETF</a></span>
+  <span><a href="https://www.investir.blog/s/premium">Newsletter</a> · <a href="https://macroetf.com">MacroETF</a></span>
 </footer>
 
 <script>
@@ -310,21 +330,62 @@ function drawPerfEmpty(){
 function drawDonut(positions){
   const ctx=document.getElementById('donutChart').getContext('2d');
   if(donut)donut.destroy();
-  const labels=positions.map(p=>p.ticker);
+  let screenerCount=0;
+  const labels=positions.map(p=>{
+    if(p.source==='screener'){screenerCount++;return `Action #${screenerCount}`;}
+    return p.ticker;
+  });
   const data=positions.map(p=>p.weight_actual||0);
   const colors=positions.map((_,i)=>COLORS[i%COLORS.length]);
   donut=new Chart(ctx,{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:0,hoverOffset:6}]},options:{responsive:true,cutout:'74%',plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1e27',borderColor:'rgba(255,255,255,0.1)',borderWidth:1,bodyFont:{family:'JetBrains Mono',size:11},callbacks:{label:c=>`  ${c.label} : ${f2(c.parsed)} %`}}}}});
-  document.getElementById('donut-leg').innerHTML=positions.map((p,i)=>`<div class="d-item"><div class="d-left"><div class="d-dot" style="background:${colors[i]}"></div><span class="d-name">${p.ticker}</span></div><span class="d-pct">${f2(p.weight_actual||0)} %</span></div>`).join('');
+  screenerCount=0;
+  document.getElementById('donut-leg').innerHTML=positions.map((p,i)=>{
+    const label=p.source==='screener'?(++screenerCount,`🔒 Action #${screenerCount}`):p.ticker;
+    return `<div class="d-item"><div class="d-left"><div class="d-dot" style="background:${colors[i]}"></div><span class="d-name">${label}</span></div><span class="d-pct">${f2(p.weight_actual||0)} %</span></div>`;
+  }).join('');
 }
 
 function renderPos(positions){
   const body=document.getElementById('pos-body');
   if(!positions.length){body.innerHTML='<div class="error">Aucune position active pour le moment.</div>';return;}
+  // Compteur pour numéroter les actions screener masquées
+  let screenerCount=0;
   body.innerHTML=positions.map((p,i)=>{
     const up=p.pnl_pct>=0;
-    const name=p.name.length>28?p.name.slice(0,28)+'…':p.name;
-    const src=p.source==='screener'?'<span class="badge badge-screener">Screener</span>':p.source==='macroetf'?'<span class="badge badge-macroetf">MacroETF</span>':'';
-    return `<div class="pos-row" style="animation-delay:${i*0.06}s"><div><div class="pos-name-main">${name}</div><div class="pos-ticker-line">${p.ticker}</div>${src}</div><div class="pos-num">${fusd(p.current_price)}</div><div class="pnl ${up?'up':'dn'}">${fpct(p.pnl_pct)}</div><div><div class="wbar-wrap"><div class="wbar"><div class="wfill" style="width:${Math.min(p.weight_actual||0,100)}%"></div></div><span class="wpct">${f2(p.weight_actual||0)} %</span></div></div><div style="font-size:12px;color:var(--text3)">${p.asset_type==='etf'?'ETF':'Action'}</div></div>`;
+    const isScreener=p.source==='screener';
+    const src=isScreener
+      ?'<span class="badge badge-screener">Screener</span>'
+      :'<span class="badge badge-macroetf">MacroETF</span>';
+
+    if(isScreener){
+      screenerCount++;
+      // Action masquée — nom et ticker cachés
+      return `<div class="pos-row" style="animation-delay:${i*0.06}s">
+        <div>
+          <div class="pos-name-main locked">🔒 Action Screener #${screenerCount}</div>
+          <div class="pos-ticker-line locked-sub">Ticker réservé aux abonnés</div>
+          ${src}
+        </div>
+        <div class="pos-num">—</div>
+        <div class="pnl">—</div>
+        <div><div class="wbar-wrap"><div class="wbar"><div class="wfill" style="width:${Math.min(p.weight_actual||0,100)}%"></div></div><span class="wpct">${f2(p.weight_actual||0)} %</span></div></div>
+        <div style="font-size:12px;color:var(--text3)">Action</div>
+      </div>`;
+    } else {
+      // ETF macroETF — visible
+      const name=p.name.length>28?p.name.slice(0,28)+'…':p.name;
+      return `<div class="pos-row" style="animation-delay:${i*0.06}s">
+        <div>
+          <div class="pos-name-main">${name}</div>
+          <div class="pos-ticker-line">${p.ticker}</div>
+          ${src}
+        </div>
+        <div class="pos-num">${fusd(p.current_price)}</div>
+        <div class="pnl ${up?'up':'dn'}">${fpct(p.pnl_pct)}</div>
+        <div><div class="wbar-wrap"><div class="wbar"><div class="wfill" style="width:${Math.min(p.weight_actual||0,100)}%"></div></div><span class="wpct">${f2(p.weight_actual||0)} %</span></div></div>
+        <div style="font-size:12px;color:var(--text3)">ETF</div>
+      </div>`;
+    }
   }).join('');
 }
 

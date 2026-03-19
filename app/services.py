@@ -1,5 +1,5 @@
-# ============================================================
-# services.py — Prix via Twelve Data, performance, calculs
+﻿# ============================================================
+# services.py â€” Prix via Twelve Data, performance, calculs
 # ============================================================
 import math
 import statistics
@@ -74,7 +74,7 @@ def fetch_prices_batch(tickers: List[str]) -> Dict[str, float]:
         except Exception as e:
             logger.error(f"Erreur batch Twelve Data US: {e}")
 
-    # ETF europeens — requetes individuelles avec exchange
+    # ETF europeens â€” requetes individuelles avec exchange
     for ticker in eu_tickers:
         try:
             symbol = _td_symbol(ticker)
@@ -242,3 +242,4 @@ def save_daily_snapshot(db, total_value, cash=0):
     else:
         db.add(PortfolioSnapshot(total_value=total_value, cash=cash, snapshot_date=today))
     db.commit()
+
