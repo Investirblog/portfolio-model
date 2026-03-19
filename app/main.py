@@ -2,7 +2,7 @@
 # main.py — Application FastAPI principale
 # Portfolio Modèle — investir.blog
 # ============================================================
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -397,3 +397,36 @@ def list_subscribers(
 ):
     """Liste des abonnés actifs."""
     return db.query(Subscriber).filter(Subscriber.is_active == True).all()
+
+# ============================================================
+# ENDPOINT CRON — appelé par cron-job.org chaque jour
+# Authentification par clé secrète fixe (pas JWT)
+# ============================================================
+
+@app.post("/cron/refresh", tags=["Cron"])
+def cron_refresh_prices(
+    x_cron_secret: str = Header(None),
+    db: Session = Depends(get_db)
+):
+    """
+    Refresh des prix déclenché par un scheduler externe (cron-job.org).
+    Passer le header : X-Cron-Secret: <valeur de CRON_SECRET>
+    """
+    if x_cron_secret != settings.cron_secret:
+        raise HTTPException(status_code=403, detail="Acces non autorise")
+
+    positions = db.query(Position).filter(Position.is_active == True).all()
+    tickers = [p.ticker for p in positions] + ["SPY", "SXXP.MI"]
+    prices = refresh_prices(db, tickers)
+
+    total_value = sum(
+        float(p.shares) * prices.get(p.ticker, float(p.avg_cost))
+        for p in positions
+    )
+    save_daily_snapshot(db, total_value)
+
+    return {
+        "message": f"{len(prices)} prix mis a jour.",
+        "total_value": round(total_value, 2),
+        "tickers_updated": list(prices.keys())
+    }

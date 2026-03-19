@@ -24,6 +24,9 @@ class Settings(BaseSettings):
     base_currency: str = "USD"
     portfolio_start_value: float = 100_000.0
 
+    # Cron secret (pour le scheduler externe)
+    cron_secret: str = "changeme"
+
     # CORS
     allowed_origins: str = "http://localhost:3000,https://investir.blog"
 
