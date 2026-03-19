@@ -206,6 +206,8 @@ def _calculate_sharpe(values, risk_free_rate=0.03, trading_days=252):
         return None
     returns = [(values[i] - values[i-1]) / values[i-1] for i in range(1, len(values))]
     mean_return = statistics.mean(returns) * trading_days
+    if len(returns) < 2:
+        return None
     vol = statistics.stdev(returns) * math.sqrt(trading_days)
     if vol == 0:
         return None
@@ -242,4 +244,5 @@ def save_daily_snapshot(db, total_value, cash=0):
     else:
         db.add(PortfolioSnapshot(total_value=total_value, cash=cash, snapshot_date=today))
     db.commit()
+
 
