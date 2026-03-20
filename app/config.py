@@ -14,10 +14,10 @@ class Settings(BaseSettings):
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60 * 24  # 24h
 
-    # Brevo (emails)
-    brevo_api_key: str = ""
+    # Resend (emails)
+    resend_api_key: str = ""
     email_from: str = "portfolio@investir.blog"
-    email_from_name: str = "Investir.blog — Portefeuille Modèle"
+    email_from_name: str = "Investir.blog Portefeuille Modele"
 
     # App
     environment: str = "development"

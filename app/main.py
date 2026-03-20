@@ -20,6 +20,7 @@ from app.schemas import (
     SubscriberCreate, SubscriberOut,
     Token,
 )
+from app.email_service import send_transaction_alert
 from app.services import (
     refresh_prices, get_cached_price,
     calculate_portfolio_performance,
@@ -64,7 +65,7 @@ def get_public_positions(db: Session = Depends(get_db)):
     Liste des positions actives — version publique (sans raisonnement).
     Enrichie avec prix actuel, P&L et poids réel.
     """
-    positions = db.query(Position).filter(Position.is_active == True).all()
+    positions = db.query(Position).filter(Position.is_active == True).order_by(Position.id).all()
 
     # Calcul valeur totale pour les poids
     total_value = 0.0
@@ -316,6 +317,35 @@ def add_transaction(
     db.add(transaction)
     db.commit()
     db.refresh(transaction)
+
+    # Envoi email aux abonnes actifs
+    try:
+        subscribers = db.query(Subscriber).filter(Subscriber.is_active == True).all()
+        emails = [s.email for s in subscribers]
+        if emails:
+            send_transaction_alert(
+                ticker=payload.ticker,
+                transaction_type=payload.transaction_type,
+                shares=float(payload.shares),
+                price=float(payload.price),
+                currency=payload.currency,
+                rationale=payload.rationale or "",
+                executed_at=str(payload.executed_at),
+                recipients=emails,
+            )
+            # Log email
+            from app.models import EmailLog
+            log = EmailLog(
+                transaction_id=transaction.id,
+                subject=f"[Portefeuille Modele] {payload.transaction_type} - {payload.ticker}",
+                recipients_count=len(emails),
+                status="sent"
+            )
+            db.add(log)
+            db.commit()
+    except Exception as e:
+        logger.error(f"Erreur envoi email: {e}")
+
     return transaction
 
 
