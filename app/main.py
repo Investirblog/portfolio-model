@@ -393,7 +393,10 @@ def close_position(
 
 @app.post("/subscribers", response_model=SubscriberOut, tags=["Subscribers"])
 def subscribe(payload: SubscriberCreate, db: Session = Depends(get_db)):
-    """Inscription aux alertes email."""
+    """Inscription aux alertes email — verifie le code abonne."""
+    # Verification du code abonne (stocke dans le champ name)
+    if not payload.name or payload.name.strip().upper() != settings.subscriber_code.upper():
+        raise HTTPException(status_code=403, detail="Code abonne invalide.")
     existing = db.query(Subscriber).filter(Subscriber.email == payload.email).first()
     if existing:
         if not existing.is_active:
@@ -401,7 +404,7 @@ def subscribe(payload: SubscriberCreate, db: Session = Depends(get_db)):
             existing.unsubscribed_at = None
             db.commit()
             return existing
-        raise HTTPException(status_code=400, detail="Email déjà inscrit.")
+        raise HTTPException(status_code=400, detail="Email deja inscrit.")
     subscriber = Subscriber(**payload.model_dump())
     db.add(subscriber)
     db.commit()

@@ -27,6 +27,9 @@ class Settings(BaseSettings):
     # Cron secret (pour le scheduler externe)
     cron_secret: str = "changeme"
 
+    # Code abonne pour acces aux alertes email
+    subscriber_code: str = "INVEST2026"
+
     # Financial Modeling Prep API
     fmp_api_key: str = ""
 
