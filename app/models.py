@@ -106,7 +106,6 @@ class Subscriber(Base):
     email           = Column(String(255), nullable=False, unique=True)
     name            = Column(String(100))
     is_active       = Column(Boolean, default=True)
-    is_public       = Column(Boolean, default=False)
     subscribed_at   = Column(DateTime(timezone=True), server_default=func.now())
     unsubscribed_at = Column(DateTime(timezone=True))
     source          = Column(String(50))
